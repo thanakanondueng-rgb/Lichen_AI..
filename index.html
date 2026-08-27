@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lichen AI – ตรวจสอบคุณภาพอากาศจากไลเคน</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="container">
+    <header>
+      <div class="badge">🌿 SCIENCE PROJECT</div>
+      <h1>Lichen AI</h1>
+      <p>AI ตรวจสอบคุณภาพอากาศจากลักษณะของไลเคน</p>
+    </header>
+
+    <section class="card">
+      <h2>📷 ถ่ายภาพไลเคน</h2>
+      <p class="hint">วางไลเคนให้อยู่กลางภาพและมีแสงเพียงพอ</p>
+
+      <div class="camera-box">
+        <video id="camera" autoplay playsinline></video>
+        <canvas id="canvas" hidden></canvas>
+        <img id="preview" alt="ภาพไลเคนที่ถ่าย" hidden>
+      </div>
+
+      <div class="buttons">
+        <button id="startCamera">เปิดกล้อง</button>
+        <button id="capture" disabled>📸 ถ่ายภาพ</button>
+        <button id="retake" hidden>↻ ถ่ายใหม่</button>
+        <label class="upload-btn">
+          เลือกรูปจากเครื่อง
+          <input id="fileInput" type="file" accept="image/*" hidden>
+        </label>
+      </div>
+
+      <p id="status" class="status">กำลังเตรียมระบบ...</p>
+    </section>
+
+    <section id="result" class="card result" hidden>
+      <h2>🔎 ผลการวิเคราะห์</h2>
+      <div id="airQuality" class="quality">รอการวิเคราะห์</div>
+
+      <div class="result-grid">
+        <div>
+          <span>ลักษณะ/ชนิดที่ AI ตรวจพบ</span>
+          <strong id="lichenClass">-</strong>
+        </div>
+        <div>
+          <span>ความมั่นใจของโมเดล</span>
+          <strong id="confidence">-</strong>
+        </div>
+      </div>
+
+      <div class="explanation">
+        <h3>คำอธิบาย</h3>
+        <p id="explanationText">-</p>
+      </div>
+
+      <div class="note">
+        <strong>หมายเหตุ:</strong> ผลนี้เป็นการประเมินจากไลเคนตามโมเดลที่ฝึกไว้
+        ไม่ใช่เครื่องตรวจวัด PM2.5 หรือสารมลพิษโดยตรง
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>ℹ️ วิธีใช้งาน</h2>
+      <ol>
+        <li>กด “เปิดกล้อง” และอนุญาตการใช้กล้อง</li>
+        <li>ถ่ายภาพไลเคนให้เห็นรายละเอียดชัดเจน</li>
+        <li>กด “ถ่ายภาพ”</li>
+        <li>AI จะจำแนกภาพและแสดงผลการประเมิน</li>
+      </ol>
+    </section>
+
+    <footer>
+      <p>Lichen AI | Science Project</p>
+    </footer>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
