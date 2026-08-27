@@ -1,16 +1,6 @@
-// ===============================
-// Lichen AI
-// ===============================
-// 1) Train a Teachable Machine Image model.
-// 2) Put the published model URL below.
-// Example:
-// const MODEL_URL = "https://teachablemachine.withgoogle.com/models/XXXXXXXXX/";
-// ===============================
-
 const MODEL_URL = "https://teachablemachine.withgoogle.com/models/IK8rBO1fr/";
-
-let model = null;
-let stream = null;
+const MIN_CONFIDENCE = 0.60;
+let model = null, stream = null;
 
 const video = document.getElementById("camera");
 const canvas = document.getElementById("canvas");
@@ -20,47 +10,32 @@ const captureBtn = document.getElementById("capture");
 const retakeBtn = document.getElementById("retake");
 const fileInput = document.getElementById("fileInput");
 const statusEl = document.getElementById("status");
-
 const resultEl = document.getElementById("result");
 const airQualityEl = document.getElementById("airQuality");
 const lichenClassEl = document.getElementById("lichenClass");
 const confidenceEl = document.getElementById("confidence");
 const explanationEl = document.getElementById("explanationText");
+const scoresEl = document.getElementById("scores");
 
 const classToAirQuality = {
-  "Crustose": {
-    quality: "🟢 ดี",
-    explanation: "ตรวจพบลักษณะไลเคนแบบ Crustose ตามคลาสของโมเดล ผลการประเมินนี้ใช้เป็นตัวชี้วัดเชิงชีวภาพตามข้อมูลที่ใช้ฝึกโมเดล"
-  },
-  "Foliose": {
-    quality: "🟡 ปานกลาง",
-    explanation: "ตรวจพบลักษณะไลเคนแบบ Foliose ตามคลาสของโมเดล ควรใช้ร่วมกับข้อมูลสิ่งแวดล้อมอื่นก่อนสรุปคุณภาพอากาศ"
-  },
-  "Fruticose": {
-    quality: "🟢 ดี",
-    explanation: "ตรวจพบลักษณะไลเคนแบบ Fruticose ตามคลาสของโมเดล ผลเป็นการประเมินจากภาพ ไม่ใช่การวัดมลพิษโดยตรง"
-  },
-  "Poor": {
-    quality: "🔴 ไม่ดี",
-    explanation: "โมเดลจัดภาพไว้ในกลุ่ม Poor ตามข้อมูลที่ใช้ฝึก ควรตรวจสอบซ้ำและเปรียบเทียบกับข้อมูลคุณภาพอากาศจริง"
-  }
+  "Good": { quality: "🟢 คุณภาพอากาศดี", explanation: "AI จัดภาพไว้ในกลุ่ม Good ตามข้อมูลที่ใช้ฝึกโมเดล" },
+  "Moderate": { quality: "🟡 คุณภาพอากาศปานกลาง", explanation: "AI จัดภาพไว้ในกลุ่ม Moderate ตามข้อมูลที่ใช้ฝึกโมเดล" },
+  "Poor": { quality: "🔴 คุณภาพอากาศไม่ดี", explanation: "AI จัดภาพไว้ในกลุ่ม Poor ตามข้อมูลที่ใช้ฝึกโมเดล" },
+  "No Lichen": { quality: "⚪ ไม่พบไลเคน", explanation: "AI ไม่พบลักษณะไลเคนที่ชัดเจน กรุณาถ่ายภาพใหม่" }
 };
 
 async function loadModel() {
-  if (!MODEL_URL || MODEL_URL.includes("PUT_YOUR")) {
-    statusEl.textContent = "⚠️ กรุณาใส่ Model URL ใน script.js ก่อน";
+  if (MODEL_URL.includes("PUT_YOUR")) {
+    statusEl.textContent = "⚠️ กรุณาใส่ Model URL ใน script.js";
     return false;
   }
-
   try {
-    statusEl.textContent = "กำลังโหลด AI...";
-    const modelURL = MODEL_URL + "model.json";
-    const metadataURL = MODEL_URL + "metadata.json";
-    model = await tmImage.load(modelURL, metadataURL);
+    statusEl.textContent = "🤖 กำลังโหลด AI...";
+    model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
     statusEl.textContent = "✅ AI พร้อมใช้งาน";
     return true;
-  } catch (error) {
-    console.error(error);
+  } catch (e) {
+    console.error(e);
     statusEl.textContent = "❌ โหลดโมเดลไม่สำเร็จ ตรวจสอบ Model URL";
     return false;
   }
@@ -69,94 +44,85 @@ async function loadModel() {
 startCameraBtn.addEventListener("click", async () => {
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: "environment" } },
-      audio: false
+      video: { facingMode: { ideal: "environment" } }, audio: false
     });
-
     video.srcObject = stream;
-    video.hidden = false;
-    preview.hidden = true;
-    captureBtn.disabled = false;
-    retakeBtn.hidden = true;
+    video.hidden = false; preview.hidden = true;
+    captureBtn.disabled = false; retakeBtn.hidden = true;
     statusEl.textContent = "📷 กล้องพร้อมแล้ว";
-  } catch (error) {
-    console.error(error);
+  } catch (e) {
+    console.error(e);
     statusEl.textContent = "❌ เปิดกล้องไม่ได้ กรุณาอนุญาต Camera และใช้ HTTPS";
   }
 });
 
 captureBtn.addEventListener("click", async () => {
   if (!video.videoWidth) return;
-
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext("2d").drawImage(video, 0, 0);
-
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
   preview.src = canvas.toDataURL("image/jpeg", 0.9);
-  preview.hidden = false;
-  video.hidden = true;
-  captureBtn.disabled = true;
-  retakeBtn.hidden = false;
-
+  preview.hidden = false; video.hidden = true;
+  captureBtn.disabled = true; retakeBtn.hidden = false;
   await analyzeImage(preview);
 });
 
 retakeBtn.addEventListener("click", () => {
-  preview.hidden = true;
-  video.hidden = false;
-  captureBtn.disabled = false;
-  resultEl.hidden = true;
+  preview.hidden = true; video.hidden = false;
+  captureBtn.disabled = false; resultEl.hidden = true;
   statusEl.textContent = "📷 พร้อมถ่ายภาพใหม่";
 });
 
-fileInput.addEventListener("change", async (event) => {
-  const file = event.target.files[0];
+fileInput.addEventListener("change", async e => {
+  const file = e.target.files[0];
   if (!file) return;
-
-  const url = URL.createObjectURL(file);
-  preview.src = url;
-  preview.hidden = false;
-  video.hidden = true;
-  resultEl.hidden = true;
-
+  preview.src = URL.createObjectURL(file);
+  preview.hidden = false; video.hidden = true; resultEl.hidden = true;
   await analyzeImage(preview);
 });
 
 async function analyzeImage(imageElement) {
-  if (!model) {
-    const loaded = await loadModel();
-    if (!loaded) return;
-  }
-
+  if (!model && !(await loadModel())) return;
   try {
     statusEl.textContent = "🤖 AI กำลังวิเคราะห์...";
     resultEl.hidden = true;
+    if (!imageElement.complete) await new Promise(r => imageElement.onload = r);
 
-    const predictions = await model.predict(imageElement);
-    predictions.sort((a, b) => b.probability - a.probability);
+    const predictions = (await model.predict(imageElement))
+      .sort((a, b) => b.probability - a.probability);
+
+    scoresEl.innerHTML = "";
+    predictions.forEach(p => {
+      const percent = (p.probability * 100).toFixed(1);
+      const row = document.createElement("div");
+      row.className = "score-row";
+      row.innerHTML = `<div class="score-name">${escapeHTML(p.className)}</div>
+        <div class="score-bar"><div class="score-fill" style="width:${percent}%"></div></div>
+        <div class="score-percent">${percent}%</div>`;
+      scoresEl.appendChild(row);
+    });
 
     const best = predictions[0];
-    const className = best.className;
-    const confidence = (best.probability * 100).toFixed(1);
+    lichenClassEl.textContent = best.className;
+    confidenceEl.textContent = (best.probability * 100).toFixed(1) + "%";
 
-    const info = classToAirQuality[className] || {
-      quality: "⚪ ไม่ทราบ",
-      explanation:
-        "โมเดลตรวจพบคลาส \"" + className +
-        "\" แต่ยังไม่ได้กำหนดเกณฑ์คุณภาพอากาศให้กับคลาสนี้ กรุณาแก้ classToAirQuality ใน script.js"
-    };
-
-    lichenClassEl.textContent = className;
-    confidenceEl.textContent = confidence + "%";
-    airQualityEl.textContent = info.quality;
-    explanationEl.textContent = info.explanation;
-
+    if (best.probability < MIN_CONFIDENCE) {
+      airQualityEl.textContent = "⚠️ ยังไม่มั่นใจ";
+      explanationEl.textContent = "AI มีความมั่นใจต่ำกว่า 60% จึงไม่ควรสรุปผลจากภาพนี้ กรุณาถ่ายภาพไลเคนให้ชัดขึ้น";
+    } else {
+      const info = classToAirQuality[best.className];
+      airQualityEl.textContent = info ? info.quality : "⚪ ไม่ทราบ";
+      explanationEl.textContent = info ? info.explanation :
+        `พบ Class "${best.className}" แต่ยังไม่ได้กำหนดเกณฑ์ไว้ในระบบ`;
+    }
     resultEl.hidden = false;
     statusEl.textContent = "✅ วิเคราะห์เสร็จแล้ว";
-  } catch (error) {
-    console.error(error);
+  } catch (e) {
+    console.error(e);
     statusEl.textContent = "❌ วิเคราะห์ภาพไม่สำเร็จ";
   }
 }
 
+function escapeHTML(text) {
+  const d = document.createElement("div"); d.textContent = text; return d.innerHTML;
+}
 loadModel();
